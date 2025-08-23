@@ -46,7 +46,6 @@ class TicketCog(commands.Cog):
         await interaction.response.send_message(embed=embed, view=view)
 
     @ticket.command(name="create", description="Create a new ticket")
-    @app_commands.checks.has_role(SUPPORT_ROLE_ID)
     async def create_ticket_command(self, interaction: discord.Interaction):
         try:
             ticket_id = await create_ticket(interaction.guild, interaction.user, SUPPORT_ROLE_ID)
