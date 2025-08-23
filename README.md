@@ -18,7 +18,6 @@ Select at runtime via `DB_TYPE` env var:
 - **mongodb** – Document store support
 
 ### ⚙️ Operational Quality
-- One‑time command sync to avoid Discord rate limits
 - Graceful shutdown closes DB connections cleanly
 - Structured logging (file + console) with optional DEBUG mode (`DEBUG=1`)
 - Environment validation on startup
@@ -55,39 +54,18 @@ pip install discord.py python-dotenv pymongo mysql-connector-python
 ```
 
 ### Environment Variables
-Create a `.env` file in the project root:
-```env
-BOT_TOKEN=your_discord_bot_token
-GUILD_ID=123456789012345678
-SUPPORT_ROLE_ID=123456789012345678
-DB_TYPE=sqlite            # one of: sqlite | mysql | mongodb
 
-# MySQL (if DB_TYPE=mysql)
-MYSQL_HOST=localhost
-MYSQL_PORT=3306
-MYSQL_USER=root
-MYSQL_PASSWORD=secret
-MYSQL_DATABASE=ticket_bot
-
-# MongoDB (if DB_TYPE=mongodb)
-MONGO_URI=mongodb+srv://user:pass@cluster/url
-MONGO_DB_NAME=ticket_bot
-
-# Optional
-DEBUG=0  # set to 1 for verbose debug logging
-```
+Take a look at the .env.example file
 
 ### Run
 ```bash
 python bot.py
 ```
 
-If command sync logs 429 warnings, leave the bot running—subsequent starts won’t re-sync unless code changes (guarded in `bot.py`).
-
 ## Slash Commands (Guild Scoped)
 
 All ticket commands are restricted to users with the support role:
-- `/ticket setup` – Post the ticket creation panel with button
+- `/ticket setup` – Post the ticket creation embed with button
 - `/ticket create` – Manually create a ticket for yourself
 - `/ticket close` – Close a ticket (locks creator replies)
 - `/ticket delete` – Delete ticket channel + DB record
@@ -98,6 +76,7 @@ All ticket commands are restricted to users with the support role:
 - `/ticket info` – Show metadata (id, status, creator, claimed_by)
 
 Ticket channels are named `ticket-<short-id>` and only visible to the creator + support staff.
+The `<short-id>` is basically the first part of the id string generated using python uuid
 
 ## Architecture
 
@@ -105,9 +84,9 @@ Ticket channels are named `ticket-<short-id>` and only visible to the creator + 
 - `bot.py` – Startup, logging, env validation, graceful shutdown
 - `cogs/TicketCog.py` – Slash command group & interaction logic
 - `utils/botutils.py` – Ticket channel + DB orchestration helpers
-- `utils/embeds.py` – Embed factories (create / close / claim)
+- `utils/embeds.py` – Embed functions
 - `ui/TicketSetupView.py` – Persistent view with “Open Ticket” button
-- `db/` backends – `sqllite.py`, `mysql.py`, `mongodb.py` + `db_interface.py` router
+- `db/` backends – `sqllite.py`, `mysql.py`, `mongodb.py` + `db_interface.py` for abstraction
 
 ### Data Model (Conceptual)
 | Field | Meaning |
@@ -125,9 +104,6 @@ Indexes (MySQL/SQLite) on `channel_id` and composite `(guild_id, status)` for fa
 
 ## Technical Notes
 
-### SQLite WAL Files
-`ticketbotdatabase.db-wal` and `.db-shm` are normal when WAL mode is enabled; they enhance concurrency. To revert to a single file, remove the WAL pragma in `db/sqllite.py`.
-
 ### Command Sync
 Guild-specific sync is performed once per process run; this avoids global command propagation delay and rate limits.
 
@@ -137,16 +113,12 @@ SIGINT / SIGTERM handlers close DB connections (SQLite & MySQL). MongoDB client 
 ### Debug Logging
 Enable granular debug with `DEBUG=1` to see claim diagnostics and DB row counts.
 
-## Troubleshooting
-| Issue | Cause | Fix |
-|-------|-------|-----|
-| 404 Unknown Channel on delete | Respond after deletion attempted | Fixed: we respond before deleting now |
-| Ticket claim always “already claimed” | Existing claimed_by or rowcount 0 | Use DEBUG=1 to view diagnostics |
-| MySQL unknown database | DB absent | Auto-creation handled; verify credentials |
-| Extra SQLite `-wal`/`-shm` files | WAL mode active | Accept (normal) or disable WAL |
+## Troubleshooting and Issues
+
+**Post on the Github Repo Issues section**
 
 ## Contributing
-PRs & issues welcome. Keep changes small and documented. Add/update README sections when touching public behavior.
+Contributions are welcome. Keep changes small and documented. Add/update README sections when touching public behavior.
 
 ## License
 MIT – see [LICENSE](LICENSE).
